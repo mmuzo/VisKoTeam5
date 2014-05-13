@@ -1,0 +1,101 @@
+<project name="visko-master-build" default="deploy-visko-web">
+    
+	<!-- Get HOST or HOST Name depending upon OS -->
+	<property environment="env" />
+	<property name="env.COMPUTERNAME" value="${env.HOST}" />
+	<property name="env.COMPUTERNAME" value="${env.HOSTNAME}" />
+	
+	<!-- Start Load the server properties -->
+	<echo>Looking for server.${user.name}.properties</echo>
+	<property file="server.${user.name}.properties" />
+	<echo>Looking for server.${env.COMPUTERNAME}.properties</echo>
+	<property file="server.${env.COMPUTERNAME}.properties" />
+	<property file="server.properties"/>
+	<!-- End Load the server properties -->
+	
+	<!-- Load the global content management server properties -->
+	<echo>Looking for registry.${user.name}.properties </echo>
+	<property file="registry.${user.name}.properties" />
+	<echo>Looking for registry.${env.COMPUTERNAME}.properties </echo>
+	<property file="registry.${env.COMPUTERNAME}.properties" />
+	<property file="registry.properties"/>
+	
+	<!-- Visko Modules Location -->
+	<property name="visko.modules" value="${basedir}/../visko-modules" />
+	
+	<!-- static SDK properties not dependent upon dynamic basedir -->
+	<echo>Static basedir = ${basedir}</echo>
+	<property name="dir.sdk" value="${visko.modules}/ModuleSDK" />	
+	<property name="dir.sdk.src" value="${dir.sdk}/src" />
+	<property name="dir.sdk.webapp" value="${dir.sdk}/webapp" />
+	
+	<!-- set the classpath to include jars from the axis2 suite -->
+	<path id="classpath-axis2">
+		<fileset dir="${dir.sdk}/webapp/WEB-INF/lib">
+			<include name="**/*.jar" />
+		</fileset>	
+	</path>
+
+	<!-- define the task for converting java to wsdl which is used by module-build.xml -->
+	<taskdef name="java2wsdl" classname="org.apache.axis2.tool.ant.Java2WSDLTask">
+		<classpath refid="classpath-axis2" />
+	</taskdef>
+	
+	<!-- Reference ant-contrib.jar in classpath -->
+	<path id="build.classpath">
+		<fileset dir="${basedir}/lib" includes="*.jar" />
+	</path>
+	
+	<!-- Import ant-contrib tasks -->	
+	<taskdef classpathref="build.classpath" resource="net/sf/antcontrib/antlib.xml" />
+
+	<!-- WAR all modules, register (i.e., generate RDF) modules, and move module WARs to Tomcat server -->
+	<target name="deploy-visko-web" depends="deploy-active-modules,register-active-modules">
+		<ant antfile="${basedir}/../visko/visko-web/build.xml" dir="${basedir}/../visko/visko-web" target="deploy" inheritall="true" inheritrefs="false"/>		
+	</target>
+	
+	<!-- BUILD Triple Store -->
+	<target name="build-triple-store" depends="register-active-modules">
+		<ant antfile="${basedir}/../visko/visko-web/build.xml" dir="${basedir}/../visko/visko-web" target="build-triple-store" inheritall="true" inheritrefs="false"/>		
+	</target>
+	
+	<!-- WAR up modules -->
+	<target name="deploy-active-modules">
+		<echo>Deploying modules: ${active-modules}</echo>		
+		<echo>Deploying to server: ${server-base-path}</echo>
+		<for list="${active-modules}" param="module.name">
+			<sequential>
+				<echo>Warring module_@{module.name}</echo>
+				<antcall target="war-module">
+					<param name="module.dir" value="${visko.modules}/module_@{module.name}"/>
+				</antcall>
+			</sequential>
+		</for>
+
+	</target>
+
+	<target name="war-module">
+		<ant antfile="${basedir}/module-build.xml" dir="${module.dir}" target="war" inheritall="true" inheritrefs="false"/>		
+	</target>
+	
+	<target name="register-active-modules">
+		<!-- first clear out all the old registry files -->
+		<delete dir="${basedir}/../visko/visko-web/WebContent/registry"/>
+		<mkdir dir="${basedir}/../visko/visko-web/WebContent/registry" />
+		
+		<!-- iterate over the list of projects in property active-modules and build them  -->
+		<for list="${active-modules}" param="module.name">
+			<sequential>
+				<echo>registering module module_@{module.name}</echo>
+				<antcall target="register-module">
+					<param name="module.dir" value="${visko.modules}/module_@{module.name}"/>
+				</antcall>
+			</sequential>
+		</for>
+	</target>
+	
+	<target name="register-module">
+		<ant antfile="${basedir}/module-build.xml" dir="${module.dir}" target="register-module" inheritall="true" inheritrefs="false"/>		
+	</target>
+
+</project>
