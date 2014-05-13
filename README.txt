@@ -1,1 +1,9 @@
-NOTE: The VisKo server and API build instructions are being updated. When they are completed, you will be able to access them at https://github.com/nicholasdelrio/visko/wiki
+Installation Requirements 
+	-Apache Ant
+	-Apache Tomcat
+	
+Compiling 
+	-Navigate to the visko/visko-build folder, then run “ant”
+	-Copy the output wars into your Tomcat/webapps directory 
+	-Start tomcat 
+	-Enter the following URL: localhost:8080/visko-web/main.jsp
